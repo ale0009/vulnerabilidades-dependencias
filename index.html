@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>¿Tus dependencias tienen vulnerabilidades?</title>
+  <meta name="description" content="Pega un requirements.txt, package.json o package-lock.json y mira qué vulnerabilidades conocidas tienen tus dependencias, con la base pública OSV.dev. Todo se procesa en tu navegador.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.osv.dev" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bangers&family=IBM+Plex+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="css/estilo.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23F9F9F7'/%3E%3Cpath d='M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z' fill='none' stroke='%230A090A' stroke-width='3'/%3E%3Cpath d='M16 9v9M16 21v2' stroke='%23CB433E' stroke-width='3.5'/%3E%3C/svg%3E">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#texto">Saltar al archivo</a>
+  <header class="cabecera">
+    <span class="kanji" aria-hidden="true">脆弱</span>
+    <div class="titulo">
+      <p class="antetitulo">Auditoría de dependencias · OSV.dev</p>
+      <h1>¿Tus dependencias tienen vulnerabilidades?</h1>
+    </div>
+    <nav class="nav">
+      <a class="boton-linea" href="proceso/">Cómo se hizo</a>
+      <button type="button" class="boton-linea" id="tema" aria-label="Cambiar tema">Tema: auto</button>
+    </nav>
+  </header>
+
+  <main class="tablero">
+    <section class="entrada vineta" aria-labelledby="entrada-t">
+      <div class="entrada-cabeza">
+        <h2 id="entrada-t"><span class="paso-n">PASO 1</span>Tu archivo</h2>
+        <div class="chips">
+          <span class="chip chip-ejemplo" id="chip-ejemplo">Ejemplo cargado</span>
+          <span class="chip chip-formato" id="chip-formato">requirements.txt</span>
+        </div>
+      </div>
+      <div class="zona es-ejemplo" id="zona">
+        <label class="oculto" for="texto">Contenido del archivo de dependencias</label>
+        <textarea id="texto" wrap="off" spellcheck="false" autocomplete="off" aria-describedby="privacidad" placeholder="Pega aquí tu requirements.txt, package.json o package-lock.json… o arrastra el archivo."></textarea>
+        <div class="soltar" aria-hidden="true">¡Suéltalo!</div>
+      </div>
+      <div class="acciones">
+        <button type="button" class="boton-linea primario" id="analizar">Analizar</button>
+        <input type="file" id="archivo" class="archivo-input" accept=".txt,.json,text/plain,application/json">
+        <label for="archivo" class="boton-linea">Abrir archivo</label>
+        <button type="button" class="boton-linea" id="ejemplo">Ejemplo</button>
+        <button type="button" class="boton-linea" id="limpiar">Limpiar</button>
+      </div>
+      <p class="privacidad" id="privacidad">
+        <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true"><path d="M9 1l7 3v5c0 5-3 8-7 10C5 17 2 14 2 9V4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 10l2.5 2.5 4.5-5" fill="none" stroke="var(--cian)" stroke-width="2.2"/></svg>
+        <span><strong>El archivo no sale de tu navegador.</strong> Solo se envía a OSV.dev el nombre, el ecosistema y la versión de cada paquete.</span>
+      </p>
+    </section>
+
+    <section class="hud vineta" id="hud" aria-labelledby="hud-t" aria-busy="true">
+      <span class="combo" id="combo" hidden></span>
+      <div class="hud-cabeza">
+        <h2 id="hud-t"><span class="paso-n">PASO 2</span>Diagnóstico</h2>
+        <p class="estado" id="estado"><span class="chip chip-carga">Cargando</span></p>
+      </div>
+      <div class="progreso" id="progreso" hidden><i></i></div>
+      <div class="hud-cuerpo" aria-live="polite">
+        <div id="anillo"></div>
+        <div>
+          <p class="veredicto" id="veredicto">Consultando…</p>
+          <p class="explica" id="explica">Pidiendo a OSV.dev las vulnerabilidades conocidas de cada versión.</p>
+          <ul class="barras" id="barras" aria-label="Vulnerabilidades por severidad"></ul>
+        </div>
+      </div>
+      <div class="medidores">
+        <div class="medidor"><span class="hud-n" id="m-deps">–</span><span class="hud-l">dependencias leídas</span></div>
+        <div class="medidor"><span class="hud-n rojo" id="m-vuln">–</span><span class="hud-l">con vulnerabilidades</span></div>
+        <div class="medidor"><span class="hud-n" id="m-hall">–</span><span class="hud-l">vulnerabilidades (sin duplicar alias)</span></div>
+        <div class="medidor"><span class="hud-n cian" id="m-sinv">–</span><span class="hud-l">sin versión fija</span></div>
+      </div>
+    </section>
+
+    <section class="resultados vineta" aria-labelledby="res-t">
+      <div class="resultados-cabeza">
+        <h2 id="res-t"><span class="paso-n">PASO 3</span>Qué actualizar primero</h2>
+        <p>Ordenado por la vulnerabilidad más grave de cada paquete.</p>
+      </div>
+      <ol class="lista-deps" id="lista"></ol>
+    </section>
+
+    <div class="extra">
+      <section class="vineta" aria-labelledby="salud-t">
+        <h2 id="salud-t">Así se calculó la salud</h2>
+        <p class="formula" id="formula">salud = 100 − Σ descuentos</p>
+        <ul class="desglose" id="desglose"></ul>
+        <p class="chiquita">Fórmula propia («calculado aquí»), no es un estándar. Cada dependencia vale lo mismo y descuenta según su peor hallazgo: crítica 100 %, alta 70 %, media 40 %, baja 15 %, sin clasificar 40 %, sin versión fija 10 %. <a href="proceso/#salud">Por qué así</a>.</p>
+      </section>
+      <section class="vineta" aria-labelledby="otras-t">
+        <h2 id="otras-t">Sin hallazgos y sin verificar</h2>
+        <div id="otras"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="pie">
+    <p>Datos: <a href="https://osv.dev/">OSV.dev</a>, la base abierta de vulnerabilidades de código abierto (API pública, sin clave; cada registro conserva la licencia de su fuente, como GitHub Advisory Database o PyPA). Severidad: CVSS v3 calculado del vector; si no hay, la etiqueta de la fuente. Esto no reemplaza una auditoría: mira <a href="proceso/#limites">las limitaciones</a>.</p>
+    <p class="creditos"><a href="https://github.com/ale0009">Mario Puerta</a> (github.com/ale0009) × <a href="https://www.linkedin.com/in/davidalexanderrinconcorredorkuronoma/">David Rincón «Kuronoma»</a> (LinkedIn) · <a href="#">Portafolio</a></p>
+  </footer>
+</body>
+</html>

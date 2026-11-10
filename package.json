@@ -1,0 +1,11 @@
+{
+  "name": "vulnerabilidades-dependencias",
+  "version": "1.0.0",
+  "description": "¿Tus dependencias tienen vulnerabilidades? Revisa requirements.txt, package.json o package-lock.json contra OSV.dev desde el navegador. Página estática sin build.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Mario Alejandro Puerta Alarcón",
+  "scripts": { "test": "node --test", "respaldo": "node scripts/generar-respaldo.mjs" },
+  "engines": { "node": ">=20" }
+}

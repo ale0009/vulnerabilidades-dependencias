@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cómo se hizo · ¿Tus dependencias tienen vulnerabilidades?</title>
+  <meta name="description" content="Cómo funciona OSV.dev, el flujo de datos de la herramienta, el análisis del ejemplo y su relación con OWASP A06:2021 y la auditoría de sistemas.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bangers&family=IBM+Plex+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="../css/estilo.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23F9F9F7'/%3E%3Cpath d='M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z' fill='none' stroke='%230A090A' stroke-width='3'/%3E%3Cpath d='M16 9v9M16 21v2' stroke='%23CB433E' stroke-width='3.5'/%3E%3C/svg%3E">
+  <script type="module" src="../js/proceso.js"></script>
+</head>
+<body class="pagina-proceso">
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+  <header class="cabecera">
+    <span class="kanji" aria-hidden="true">監査</span>
+    <div class="titulo">
+      <p class="antetitulo">Proceso · ¿Tus dependencias tienen vulnerabilidades?</p>
+      <h1>Cómo se hizo</h1>
+    </div>
+    <nav class="nav">
+      <a class="boton-linea" href="../">Volver a la herramienta</a>
+      <button type="button" class="boton-linea" id="tema" aria-label="Cambiar tema">Tema: auto</button>
+    </nav>
+  </header>
+
+  <main class="articulo" id="contenido">
+    <nav class="indice vineta" aria-label="En esta página">
+      <ol>
+        <li><a href="#problema">El problema: OWASP A06</a></li>
+        <li><a href="#auditoria">La auditoría que ya hicimos</a></li>
+        <li><a href="#osv">Cómo funciona OSV</a></li>
+        <li><a href="#flujo">Flujo de datos</a></li>
+        <li><a href="#graficas">Lo que dice el ejemplo</a></li>
+        <li><a href="#salud">La puntuación de salud</a></li>
+        <li><a href="#diseno">Decisiones de diseño</a></li>
+        <li><a href="#limites">Limitaciones y fe de erratas</a></li>
+        <li><a href="#fuentes">Fuentes</a></li>
+      </ol>
+    </nav>
+
+    <section id="problema" class="bloque">
+      <h2>1 · El problema: componentes vulnerables</h2>
+      <p>Casi ningún programa se escribe desde cero: se arma con decenas o cientos de librerías ajenas. Si una de esas librerías tiene un fallo de seguridad publicado y nadie la actualiza, el fallo pasa a ser del proyecto. OWASP, la fundación que publica la lista de los diez riesgos más comunes en aplicaciones web, lo llama <strong>A06:2021 «Componentes vulnerables y desactualizados»</strong> (<em>Vulnerable and Outdated Components</em>).</p>
+      <p>En la tesis del consultorio de informática basado en software libre, Mario y David evaluaron su propio sistema frente al OWASP Top 10:2021. Sobre A06 escribieron:</p>
+      <blockquote class="cita">
+        <p>«Este riesgo se refiere al uso de componentes (librerías, frameworks, dependencias) con vulnerabilidades conocidas o sin actualización reciente.»</p>
+        <footer>Tesis, sección «A06:2021 — Vulnerable and Outdated Components». Estado: «Bajo monitoreo activo».</footer>
+      </blockquote>
+      <p>La tesis registra que durante el MVP no encontraron CVE críticos en las versiones instaladas, y deja como mitigación para la v2.0 integrar monitoreo continuo «—Dependabot de GitHub, Snyk o npm audit programado—» en la integración continua. El plan de mantenimiento preventivo (Anexo H.8.1) pide además ejecutar <code>npm audit</code> cada mes. En la tabla consolidada de seguridad, A06 queda en «Monitoreo» con prioridad «Media» para la v2.0.</p>
+      <p>Esta herramienta es esa revisión, pero sin instalar nada: pegas el archivo de dependencias y ves en segundos qué versiones tienen avisos publicados. Funciona para Python y para npm.</p>
+      <dl class="glosario">
+        <dt>CVE</dt><dd>Identificador público de una vulnerabilidad (p. ej. CVE-2022-28346). Lo asigna el programa CVE.</dd>
+        <dt>GHSA / PYSEC</dt><dd>Identificadores de aviso de GitHub Advisory Database y de la base de avisos de PyPA. Una misma vulnerabilidad puede tener los tres.</dd>
+        <dt>CVSS</dt><dd>Sistema común para puntuar la gravedad de 0 a 10 a partir de un vector (cómo se ataca y qué se compromete).</dd>
+        <dt>Lockfile</dt><dd>Archivo que anota la versión exacta instalada de cada paquete, incluidas las dependencias de las dependencias (<code>package-lock.json</code>).</dd>
+      </dl>
+    </section>
+
+    <section id="auditoria" class="bloque">
+      <h2>2 · La auditoría que ya hicimos</h2>
+      <p>En Eiran, el auditor de repositorios que construimos, el estándar «Ley 1273 / ISO 27001:2022» cruza cada delito informático de la Ley 1273 de 2009 con los controles del Anexo A de ISO/IEC 27001:2022. Dos de esos controles son justo este tema:</p>
+      <div class="dos-col">
+        <div class="vineta">
+          <h3>A.8.19 · Instalación de software</h3>
+          <p>Pregunta del criterio: «¿El software que se instala está controlado (dependencias con versión fija y de origen conocido)?». Eiran lo mide solo (<code>dependencias_fijadas</code>): busca en <code>requirements.txt</code> paquetes sin <code>==</code>, <code>&gt;=</code> ni otro operador, y en <code>package.json</code> versiones <code>*</code>, <code>latest</code> o vacías. Si encuentra alguna, el criterio baja de 4 a 1.</p>
+          <p class="nota-fuente">Aquí se reusa la idea: una dependencia sin versión <strong>no se puede verificar</strong> y aparece aparte, con un descuento pequeño en la salud.</p>
+        </div>
+        <div class="vineta">
+          <h3>A.8.8 · Gestión de vulnerabilidades técnicas</h3>
+          <p>Pregunta del criterio: «¿Las vulnerabilidades conocidas de dependencias y sistema se detectan y corrigen?». La evidencia que Eiran espera: <code>pip-audit</code>/<code>npm audit</code>/Dependabot en CI y dependencias al día. En Eiran ese criterio lo califica la IA auditora con evidencia.</p>
+          <p class="nota-fuente">Esta herramienta produce esa evidencia: qué versión, qué aviso, qué versión lo corrige y el enlace a la fuente.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="osv" class="bloque">
+      <h2>3 · Cómo funciona OSV</h2>
+      <p><a href="https://osv.dev/">OSV.dev</a> es una base abierta de vulnerabilidades de software libre mantenida por Google. Reúne avisos de muchas fuentes (GitHub Advisory Database, PyPA, RustSec, Go y otras) en un formato común, el <em>esquema OSV</em>, donde cada aviso dice qué paquete y qué rangos de versiones afecta. La API es pública, no pide clave y acepta peticiones desde el navegador (CORS: lo verificamos con la cabecera <code>access-control-allow-origin</code> y con la consulta real desde Chromium).</p>
+      <ol class="tuberia">
+        <li><span class="paso">POST /v1/querybatch</span><strong>¿Afectado?</strong><small>Se mandan hasta 1000 pares nombre + versión. Responde, por cada uno, la lista de ids que lo afectan (sin detalles).</small></li>
+        <li><span class="paso">GET /v1/vulns/{id}</span><strong>Detalle</strong><small>Por cada id: resumen, alias (CVE), vector CVSS, rangos afectados y referencias. Se piden 8 a la vez.</small></li>
+        <li><span class="paso">en tu navegador</span><strong>Unir alias</strong><small>GHSA-… y PYSEC-… con el mismo CVE son una sola vulnerabilidad: se cuentan una vez.</small></li>
+        <li><span class="paso">en tu navegador</span><strong>Severidad</strong><small>OSV entrega el vector, no la nota: la nota CVSS v3 se calcula aquí con la fórmula de FIRST.</small></li>
+        <li><span class="paso">en tu navegador</span><strong>Corrección</strong><small>De los rangos se elige el que contiene tu versión: Django 2.2.0 se corrige en 2.2.28, no en 4.0.4.</small></li>
+      </ol>
+      <p>Qué se entiende de cada archivo: en <code>requirements.txt</code> se leen <code>==</code> (exacta), <code>&gt;=</code> y <code>~=</code> (se consulta la mínima: es el peor caso), comentarios, extras como <code>requests[security]</code>, marcadores <code>; python_version</code> y continuaciones con <code>--hash</code>. En <code>package.json</code>, <code>dependencies</code>, <code>devDependencies</code>, <code>optional</code> y <code>peer</code>, con <code>^</code> y <code>~</code> tratados igual que <code>&gt;=</code>. En <code>package-lock.json</code> v2 y v3 se usa el mapa <code>packages</code> (versiones exactas, también las transitivas); la v1 también funciona.</p>
+    </section>
+
+    <section id="flujo" class="bloque">
+      <h2>4 · Flujo de datos</h2>
+      <figure class="figura vineta">
+        <svg class="grafica flujo" viewBox="0 0 900 430" role="img" aria-labelledby="flujo-t flujo-d">
+          <title id="flujo-t">Flujo de datos de la herramienta</title>
+          <desc id="flujo-d">El archivo se lee y se parsea dentro del navegador. Solo la lista de nombre, ecosistema y versión cruza la frontera hacia la API de OSV.dev. Las respuestas vuelven al navegador, donde se unen alias, se calcula la severidad y se dibuja el tablero.</desc>
+          <defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="punta" d="M0 0L10 5L0 10z"/></marker></defs>
+          <rect class="caja-nav" x="10" y="10" width="560" height="410" rx="4"/>
+          <text class="r" x="26" y="40">TU NAVEGADOR</text>
+          <text class="s" x="26" y="58">el archivo completo se queda aquí</text>
+          <rect class="caja" x="30" y="80" width="150" height="66"/><text class="t" x="44" y="108">Archivo</text><text class="s" x="44" y="128">pegado o arrastrado</text>
+          <rect class="caja" x="220" y="80" width="150" height="66"/><text class="t" x="234" y="108">parseo.js</text><text class="s" x="234" y="128">formato y versiones</text>
+          <rect class="caja" x="400" y="80" width="150" height="66"/><text class="t" x="414" y="108">Lista</text><text class="s" x="414" y="128">nombre+eco+versión</text>
+          <path class="flecha" d="M180 113H216"/><path class="flecha" d="M370 113H396"/>
+          <rect class="caja" x="400" y="210" width="150" height="66"/><text class="t" x="414" y="238">agregar.js</text><text class="s" x="414" y="258">alias · corrección</text>
+          <rect class="caja" x="220" y="210" width="150" height="66"/><text class="t" x="234" y="238">cvss.js</text><text class="s" x="234" y="258">nota CVSS v3</text>
+          <rect class="caja" x="30" y="210" width="150" height="66"/><text class="t" x="44" y="238">Tablero</text><text class="s" x="44" y="258">HUD y tarjetas</text>
+          <path class="flecha" d="M400 243H374"/><path class="flecha" d="M220 243H184"/>
+          <rect class="caja" x="30" y="330" width="250" height="66"/><text class="t" x="44" y="358">Respaldo guardado</text><text class="s" x="44" y="378">datos/osv-respaldo.json</text>
+          <path class="flecha" d="M155 330V280"/><text class="s" x="162" y="312">sin conexión</text>
+          <line class="frontera" x1="600" y1="10" x2="600" y2="420"/>
+          <text class="r" x="612" y="40">INTERNET</text>
+          <rect class="caja caja-osv" x="680" y="70" width="200" height="86"/><text class="t" x="694" y="100">OSV.dev</text><text class="s" x="694" y="120">/v1/querybatch</text><text class="s" x="694" y="140">≤ 1000 consultas</text>
+          <rect class="caja caja-osv" x="680" y="200" width="200" height="86"/><text class="t" x="694" y="230">OSV.dev</text><text class="s" x="694" y="250">/v1/vulns/{id}</text><text class="s" x="694" y="270">8 a la vez</text>
+          <path class="flecha flecha-sale" d="M550 100H676"/><text class="s" x="610" y="88">sale: solo la lista</text>
+          <path class="flecha" d="M680 140H620V215H556"/><text class="s" x="628" y="182">ids</text>
+          <path class="flecha flecha-sale" d="M556 230H676"/>
+          <path class="flecha" d="M680 270H556"/><text class="s" x="610" y="292">detalles</text>
+        </svg>
+        <figcaption>Lo único que cruza la línea roja es la lista de paquetes con su versión. El texto pegado, los comentarios y los nombres de archivo no salen nunca.</figcaption>
+      </figure>
+    </section>
+
+    <section id="graficas" class="bloque">
+      <h2>5 · Lo que dice el ejemplo</h2>
+      <p>El ejemplo precargado es un <code>requirements.txt</code> de un proyecto Django de 2019 que nadie actualizó: <span data-cifra="deps">–</span> dependencias, <span data-cifra="consultadas">–</span> con versión consultable. Las cifras de abajo salen de la respuesta real de OSV.dev guardada el <span data-cifra="fecha">–</span> (el mismo archivo que usa el modo sin conexión), procesada con el mismo código de la herramienta.</p>
+      <div class="dos-col">
+        <figure class="figura vineta">
+          <h3>Vulnerabilidades por severidad</h3>
+          <div id="g-sev" class="g-caja"></div>
+          <figcaption>Cuenta cada vulnerabilidad una vez por paquete, tras unir alias. Severidad: CVSS v3 calculado del vector (<span data-cifra="cvss">–</span> casos); si no hay, la etiqueta de la fuente.</figcaption>
+        </figure>
+        <figure class="figura vineta">
+          <h3>Por dependencia</h3>
+          <div id="g-deps" class="g-caja"></div>
+          <figcaption>Django 2.2.0 concentra <span data-cifra="django">–</span>: es el paquete más grande del ejemplo y a la versión 2.2.0 le faltan los parches de su propia rama (varias de sus vulnerabilidades se corrigen en 2.2.28).</figcaption>
+        </figure>
+      </div>
+      <div class="dos-col">
+        <figure class="figura vineta">
+          <h3>Por qué unir alias</h3>
+          <div id="g-alias" class="g-caja"></div>
+          <figcaption>Gris: identificadores que devuelve OSV. Cian: vulnerabilidades distintas. Sin unir, el conteo casi se duplica.</figcaption>
+        </figure>
+        <div class="vineta cifras">
+          <h3>Cifras (calculado aquí)</h3>
+          <ul>
+            <li><span data-cifra="ids">–</span> identificadores devueltos por OSV → <span data-cifra="unicas">–</span> vulnerabilidades distintas.</li>
+            <li><span data-cifra="criticas">–</span> críticas, <span data-cifra="altas">–</span> altas, <span data-cifra="medias">–</span> medias y <span data-cifra="bajas">–</span> bajas.</li>
+            <li><span data-cifra="vulnerables">–</span> de <span data-cifra="consultadas">–</span> paquetes consultados tienen al menos una; solo <code>python-dateutil 2.8.2</code> sale limpio.</li>
+            <li><code>gunicorn</code> no tiene versión: no se puede verificar (criterio A.8.19).</li>
+            <li>Salud del ejemplo: <span data-cifra="salud">–</span>/100, rango <span data-cifra="rango">–</span>.</li>
+          </ul>
+          <p class="chiquita">En vivo las cifras pueden subir: cada semana se publican avisos nuevos.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="salud" class="bloque">
+      <h2>6 · La puntuación de salud</h2>
+      <p>No hay un estándar para resumir un archivo de dependencias en un número, así que la fórmula es propia (<strong>calculado aquí</strong>) y se muestra entera en la herramienta:</p>
+      <pre class="codigo">puntos por dependencia = 100 / N   (N = dependencias declaradas)
+descuento = puntos × peso del PEOR hallazgo de esa dependencia
+  crítica 1,00 · alta 0,70 · media 0,40 · baja 0,15 · sin clasificar 0,40
+  sin versión fija 0,10   (no se puede verificar: A.8.19)
+salud = redondear(100 − Σ descuentos)
+rango: S = 100 · A ≥ 85 · B ≥ 70 · C ≥ 50 · D ≥ 30 · F &lt; 30</pre>
+      <ul class="decisiones">
+        <li><strong>El peor hallazgo, no la suma.</strong> Django con 43 avisos no debe hundir solo la nota: lo que importa es si cada paquete es seguro. Con la suma, cualquier proyecto viejo saldría en 0 y el número dejaría de informar.</li>
+        <li><strong>Todas las dependencias pesan igual.</strong> La herramienta no sabe cuál es crítica para tu negocio; ese juicio es tuyo.</li>
+        <li><strong>«Sin clasificar» pesa como media.</strong> Que no haya nota no quiere decir que sea leve.</li>
+      </ul>
+    </section>
+
+    <section id="diseno" class="bloque">
+      <h2>7 · Decisiones de diseño</h2>
+      <ul class="decisiones">
+        <li><strong>Privacidad primero: el archivo no sale del navegador.</strong> El parseo es JavaScript local; a OSV solo viaja <code>{nombre, ecosistema, versión}</code>. No hay servidor propio, ni analítica, ni cookies. Un <code>package-lock.json</code> puede revelar la estructura interna de un proyecto: por eso no se sube.</li>
+        <li><strong>Sin clave, sin login, sin compilación.</strong> HTML, CSS y módulos JS servidos tal cual (GitHub Pages).</li>
+        <li><strong>Versión mínima para los rangos.</strong> <code>&gt;=5.1</code> o <code>^4.17.0</code> no dicen qué se instaló; se consulta la mínima y se marca «(mín.)». Es el peor caso, no el real: para el real, usa un lockfile.</li>
+        <li><strong>Una tarjeta por paquete, ordenada por gravedad.</strong> La pregunta práctica es «¿qué actualizo primero?», no «lista de 74 CVE». Cada tarjeta da la versión que cierra todos sus avisos y enlaza cada uno a OSV y a su fuente.</li>
+        <li><strong>HUD de videojuego, con mesura.</strong> Anillo de «salud», rango con letra, «combo» de críticas y «logro» si sale limpio: ayudan a leer el estado en un vistazo sin esconder los datos.</li>
+        <li><strong>Respaldo honesto.</strong> Si OSV no responde, el ejemplo se muestra con la respuesta guardada y un aviso rojo con la fecha; tu archivo nunca se mezcla con datos guardados.</li>
+      </ul>
+      <div class="dos-col">
+        <div class="vineta">
+          <h3>Paleta de severidad</h3>
+          <div class="paleta">
+            <span style="--c:#CB433E" class="osc">Crítica<br><code>#CB433E</code></span>
+            <span style="--c:#E07B39">Alta<br><code>#E07B39</code></span>
+            <span style="--c:#F2C76E">Media<br><code>#F2C76E</code></span>
+            <span style="--c:#438FB8">Baja<br><code>#438FB8</code></span>
+            <span style="--c:#BDB9B0">Sin clasificar<br><code>#BDB9B0</code></span>
+            <span style="--c:#F9F9F7">Papel<br><code>#F9F9F7</code></span>
+          </div>
+          <p class="chiquita">Rojo y cian vienen de la línea «Tinta y trama»; ámbar y amarillo se añadieron para las severidades intermedias. La etiqueta siempre lleva texto: el color nunca es el único dato.</p>
+        </div>
+        <div class="vineta">
+          <h3>Versiones del tablero</h3>
+          <div class="bocetos">
+            <figure>
+              <svg viewBox="0 0 220 140" role="img" aria-label="Boceto 1: tabla plana de CVE">
+                <rect class="bk-f" x="10" y="10" width="200" height="18"/><g class="bk-l"><line x1="10" y1="42" x2="210" y2="42"/><line x1="10" y1="58" x2="210" y2="58"/><line x1="10" y1="74" x2="210" y2="74"/><line x1="10" y1="90" x2="210" y2="90"/><line x1="10" y1="106" x2="210" y2="106"/><line x1="10" y1="122" x2="210" y2="122"/></g>
+                <text class="bk-t" x="16" y="23">CVE · paquete · CVSS</text>
+              </svg>
+              <figcaption>v1 · Tabla plana de CVE. Descartada: 74 filas sin prioridad.</figcaption>
+            </figure>
+            <figure>
+              <svg viewBox="0 0 220 140" role="img" aria-label="Boceto 2: anillo de salud con barras por severidad y tarjetas por paquete">
+                <circle cx="48" cy="48" r="30" fill="none" stroke="var(--s-alta)" stroke-width="9"/><circle class="bk-l" cx="48" cy="48" r="36"/>
+                <rect x="94" y="22" width="100" height="9" fill="var(--s-critica)" stroke="var(--tinta)"/><rect x="94" y="38" width="76" height="9" fill="var(--s-alta)" stroke="var(--tinta)"/><rect x="94" y="54" width="50" height="9" fill="var(--s-media)" stroke="var(--tinta)"/>
+                <rect class="bk-f" x="10" y="94" width="62" height="36"/><rect class="bk-f" x="79" y="94" width="62" height="36"/><rect class="bk-f" x="148" y="94" width="62" height="36"/>
+              </svg>
+              <figcaption>v2 · HUD + tarjetas por paquete (la elegida).</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="limites" class="bloque">
+      <h2>8 · Limitaciones y fe de erratas</h2>
+      <ul class="decisiones">
+        <li><strong>Solo vulnerabilidades conocidas y publicadas.</strong> Un paquete «limpio» hoy puede tener un aviso mañana, y nada de esto detecta fallos en tu propio código ni paquetes maliciosos sin aviso.</li>
+        <li><strong>Sin árbol de dependencias en <code>requirements.txt</code> y <code>package.json</code>.</strong> Solo se revisa lo declarado; las dependencias transitivas solo aparecen con un <code>package-lock.json</code>. Para Python habría que exportar con <code>pip freeze</code>.</li>
+        <li><strong>Rangos = peor caso.</strong> Con <code>&gt;=</code>, <code>^</code> o <code>~</code> se consulta la mínima versión; quizá ya tengas instalada una corregida.</li>
+        <li><strong>Severidad aproximada en CVSS v4.</strong> Se calcula CVSS v3.x; para avisos que solo traen v4 se usa la etiqueta de la fuente, sin número.</li>
+        <li><strong>Comparación de versiones simplificada.</strong> Cubre los casos comunes de PEP 440 y SemVer (prelanzamientos, post), no épocas ni versiones locales. OSV decide qué está afectado; la comparación solo elige la versión que corrige.</li>
+        <li><strong>Formatos.</strong> No lee <code>poetry.lock</code>, <code>Pipfile.lock</code>, <code>yarn.lock</code> ni <code>pnpm-lock.yaml</code> (todavía).</li>
+        <li><strong>Exposición, no riesgo.</strong> Una vulnerabilidad crítica en una función que tu proyecto no usa no es explotable. La herramienta prioriza; la auditoría la haces tú.</li>
+      </ul>
+      <div class="vineta errata">
+        <h3>Fe de erratas de la fuente</h3>
+        <ul>
+          <li>El riesgo técnico RT-03 (vulnerabilidad en dependencias) aparece con <strong>impacto «Alto»</strong> en la Tabla H.7.1 del Anexo H y con <strong>impacto «Medio»</strong> en la Tabla 5.11.5, «Mapa de riesgos críticos del proyecto». La probabilidad coincide («Media»).</li>
+          <li>El texto que introduce los riesgos críticos dice que «la Tabla 5.11.4» los sintetiza, pero la tabla que sigue es la 5.11.5 (la 5.11.4 es la de licencias del stack).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="fuentes" class="bloque">
+      <h2>9 · Fuentes</h2>
+      <ul class="fuentes">
+        <li>OSV. (s. f.). <em>OSV API</em> (querybatch y vulns). <a href="https://google.github.io/osv.dev/api/">google.github.io/osv.dev/api/</a></li>
+        <li>OSV. (s. f.). <em>Open Source Vulnerability format</em> (esquema). <a href="https://ossf.github.io/osv-schema/">ossf.github.io/osv-schema/</a></li>
+        <li>Open Web Application Security Project [OWASP]. (2021). <em>OWASP Top 10:2021 — A06 Vulnerable and Outdated Components</em>. <a href="https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/">owasp.org/Top10</a></li>
+        <li>FIRST. (2019). <em>Common Vulnerability Scoring System v3.1: Specification Document</em>. <a href="https://www.first.org/cvss/v3.1/specification-document">first.org/cvss/v3.1/specification-document</a></li>
+        <li>Python Packaging Authority. (s. f.). <em>PEP 503 (nombres normalizados) y PEP 440 (versiones)</em>. <a href="https://peps.python.org/pep-0440/">peps.python.org/pep-0440</a></li>
+        <li>npm. (s. f.). <em>package-lock.json</em> (lockfileVersion 1, 2 y 3). <a href="https://docs.npmjs.com/cli/configuring-npm/package-lock-json">docs.npmjs.com</a></li>
+        <li>Puerta, M. y Rincón, D. (2026). <em>Propuesta de implementación de un consultorio de informática en la Universidad ECCI, basado en software libre</em> (trabajo de grado, Ingeniería de Sistemas): análisis OWASP Top 10:2021, Tablas 5.11.2 y 5.11.5, Anexo H (H.7.1 y H.8.1).</li>
+        <li>Eiran, auditor de repositorios: estándar «Ley 1273 / ISO 27001:2022», controles A.8.8 y A.8.19, y la medición <code>dependencias_fijadas</code>.</li>
+      </ul>
+    </section>
+
+    <a class="volver" href="../">← Volver a «¿Tus dependencias tienen vulnerabilidades?»</a>
+  </main>
+
+  <footer class="pie">
+    <p>Datos: OSV.dev (cada registro con la licencia de su fuente) · Código: licencia MIT.</p>
+    <p class="creditos"><a href="https://github.com/ale0009">Mario Puerta</a> (github.com/ale0009) × <a href="https://www.linkedin.com/in/davidalexanderrinconcorredorkuronoma/">David Rincón «Kuronoma»</a> (LinkedIn) · <a href="#">Portafolio</a></p>
+  </footer>
+</body>
+</html>
