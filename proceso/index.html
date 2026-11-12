@@ -234,8 +234,7 @@ rango: S = 100 · A ≥ 85 · B ≥ 70 · C ≥ 50 · D ≥ 30 · F &lt; 30</pre
       <div class="vineta errata">
         <h3>Fe de erratas de la fuente</h3>
         <ul>
-          <li>El riesgo técnico RT-03 (vulnerabilidad en dependencias) aparece con <strong>impacto «Alto»</strong> en la Tabla H.7.1 del Anexo H y con <strong>impacto «Medio»</strong> en la Tabla 5.11.5, «Mapa de riesgos críticos del proyecto». La probabilidad coincide («Media»).</li>
-          <li>El texto que introduce los riesgos críticos dice que «la Tabla 5.11.4» los sintetiza, pero la tabla que sigue es la 5.11.5 (la 5.11.4 es la de licencias del stack).</li>
+          <li><strong>Un riesgo con dos impactos.</strong> <b>El trabajo decía</b> que el riesgo técnico RT-03 (vulnerabilidad en dependencias) tiene <strong>impacto «Alto»</strong> en la Tabla H.7.1 del Anexo H e <strong>impacto «Medio»</strong> en la Tabla 5.11.5, «Mapa de riesgos críticos del proyecto»; la probabilidad coincide («Media»). <b>Lo correcto:</b> un mismo riesgo debe tener una sola calificación en todo el documento, porque de ella depende su prioridad (con impacto alto, este riesgo pesa más en la matriz de probabilidad × impacto). <b>La herramienta</b> no usa esa calificación: mide la exposición real de tus dependencias con los avisos de OSV y su severidad CVSS.</li>
         </ul>
       </div>
     </section>
